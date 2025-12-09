@@ -33,7 +33,7 @@ class DuelFillBlankQuestionWidget extends StatelessWidget {
                 text: TextSpan(
                   style: const TextStyle(
                     fontSize: 22,
-                    color: Colors.black87,
+                    color: Colors.white,
                     height: 1.5,
                   ),
                   children: _buildSentenceSpans(),

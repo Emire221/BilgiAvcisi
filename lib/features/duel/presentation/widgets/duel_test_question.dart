@@ -40,7 +40,7 @@ class DuelTestQuestion extends StatelessWidget {
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: Colors.black87,
+                      color: Colors.white,
                     ),
                     textAlign: TextAlign.center,
                   ),

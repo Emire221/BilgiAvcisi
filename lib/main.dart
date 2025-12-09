@@ -14,6 +14,8 @@ import 'util/app_colors.dart';
 import 'core/navigator_key.dart';
 import 'services/notification_service.dart';
 
+import 'package:wakelock_plus/wakelock_plus.dart';
+
 // Basit bir tema yöneticisi
 class ThemeManager extends ValueNotifier<ThemeMode> {
   ThemeManager() : super(ThemeMode.system);
@@ -31,6 +33,9 @@ final themeManager = ThemeManager();
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  // Ekranın kapanmasını engelle
+  WakelockPlus.enable();
 
   // Türkçe tarih formatını başlat
   await initializeDateFormatting('tr_TR', null);

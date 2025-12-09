@@ -1062,6 +1062,59 @@ class _GuessGameScreenState extends ConsumerState<GuessGameScreen>
             ],
           ),
         ),
+
+        // 3 Yanlış tahminden sonra Soruyu Geç butonu
+        if (state.attempts >= 3) ...[
+          const SizedBox(height: 24),
+          GestureDetector(
+            onTap: () {
+              HapticFeedback.mediumImpact();
+              ref.read(guessControllerProvider.notifier).skipQuestion();
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.red.withValues(alpha: 0.8),
+                    Colors.deepOrange.withValues(alpha: 0.8),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.red.withValues(alpha: 0.4),
+                    blurRadius: 15,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Soruyu Geç',
+                    style: GoogleFonts.nunito(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  const Icon(
+                    FontAwesomeIcons.forward,
+                    color: Colors.white,
+                    size: 18,
+                  ),
+                ],
+              ),
+            ),
+          ).animate().fadeIn(duration: 500.ms).slideY(begin: 0.2, end: 0),
+        ],
       ],
     );
   }
