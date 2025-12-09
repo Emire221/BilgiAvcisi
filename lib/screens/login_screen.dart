@@ -165,14 +165,39 @@ class _LoginScreenState extends State<LoginScreen>
     _hapticLight();
 
     try {
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
+      // Firebase Authentication ile giriş yap
+      final userCredential = await FirebaseAuth.instance
+          .signInWithEmailAndPassword(email: email, password: password);
+
+      // Asenkron işlem sonrası mounted kontrolü
+      if (!mounted) return;
+
       _hapticMedium();
-      // context.read<AuthProvider>().setAuthenticated(true);
-      // Başarılı giriş - StreamBuilder otomatik yönlendirecek
+
+      // Firestore'da kullanıcı dokümanını kontrol et
+      final user = userCredential.user;
+      if (user != null) {
+        final doc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
+
+        // Asenkron işlem sonrası tekrar mounted kontrolü
+        if (!mounted) return;
+
+        // Yönlendirme: Kayıt varsa MainScreen, yoksa ProfileSetupScreen
+        if (doc.exists) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const MainScreen()),
+          );
+        } else {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const ProfileSetupScreen()),
+          );
+        }
+      }
     } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
       _hapticHeavy();
       _triggerShake();
       String message = 'Giriş başarısız oldu';
@@ -185,6 +210,7 @@ class _LoginScreenState extends State<LoginScreen>
       }
       _showErrorSnackbar(message);
     } catch (e) {
+      if (!mounted) return;
       _hapticHeavy();
       _triggerShake();
       _showErrorSnackbar('Bir hata oluştu: $e');
