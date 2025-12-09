@@ -55,7 +55,7 @@ class _HomeTabState extends ConsumerState<HomeTab>
   }
 
   Future<void> _loadDailyFact() async {
-    final fact = await DailyFactService.getTodaysFact();
+    final fact = await DailyFactService.getRandomFact();
     if (fact != null && mounted) {
       setState(() => _dailyFact = fact);
       _startTypingAnimation(fact.fact);

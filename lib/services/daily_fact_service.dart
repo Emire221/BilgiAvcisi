@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/services.dart';
 
 /// Günlük ilginç bilgiler için model sınıfı
@@ -87,5 +88,15 @@ class DailyFactService {
         return facts[index];
       },
     );
+  }
+
+  /// Rastgele bir ilginç bilgi getir (ekran her yenilendiğinde farklı gösterim için)
+  static Future<DailyFact?> getRandomFact() async {
+    final facts = await _loadFacts();
+    if (facts.isEmpty) return null;
+
+    final random = Random();
+    final index = random.nextInt(facts.length);
+    return facts[index];
   }
 }
