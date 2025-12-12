@@ -37,7 +37,7 @@ class DatabaseHelper implements IDatabaseHelper {
     String path = join(await getDatabasesPath(), 'bilgi_avcisi.db');
     return await openDatabase(
       path,
-      version: 9,
+      version: 10,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -229,6 +229,16 @@ class DatabaseHelper implements IDatabaseHelper {
         questions TEXT
       )
     ''');
+
+    // Görüntülenen Bilgi Kartı Setleri Tablosu (badge takibi için)
+    await db.execute('''
+      CREATE TABLE ViewedFlashcardSets(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        kartSetID TEXT NOT NULL UNIQUE,
+        topicID TEXT NOT NULL,
+        viewedAt TEXT
+      )
+    ''');
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -384,6 +394,18 @@ class DatabaseHelper implements IDatabaseHelper {
           description TEXT,
           difficulty INTEGER,
           questions TEXT
+        )
+      ''');
+    }
+
+    if (oldVersion < 10) {
+      // Görüntülenen Bilgi Kartı Setleri Tablosu (badge takibi için)
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS ViewedFlashcardSets(
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          kartSetID TEXT NOT NULL UNIQUE,
+          topicID TEXT NOT NULL,
+          viewedAt TEXT
         )
       ''');
     }
@@ -809,5 +831,160 @@ class DatabaseHelper implements IDatabaseHelper {
     Database db = await database;
     final results = await db.query('UserPets', orderBy: 'id DESC', limit: 1);
     return results.isNotEmpty ? results.first : null;
+  }
+
+  // ============================================================
+  // İlerleme Takip Metodları (Progress Service için)
+  // ============================================================
+
+  /// Konu için toplam test sayısı
+  Future<int> getTestCountByTopic(String topicId) async {
+    Database db = await database;
+    final result = await db.rawQuery(
+      'SELECT COUNT(*) as count FROM Testler WHERE konuID = ?',
+      [topicId],
+    );
+    return Sqflite.firstIntValue(result) ?? 0;
+  }
+
+  /// Konu için çözülmüş test sayısı (TestResults tablosundan)
+  Future<int> getSolvedTestCountByTopic(String topicId) async {
+    Database db = await database;
+    // Önce bu konuya ait test ID'lerini al
+    final tests = await db.query(
+      'Testler',
+      columns: ['testID'],
+      where: 'konuID = ?',
+      whereArgs: [topicId],
+    );
+
+    if (tests.isEmpty) return 0;
+
+    // Test ID'leri listesi
+    final testIds = tests.map((t) => t['testID'] as String).toList();
+    final placeholders = List.filled(testIds.length, '?').join(',');
+
+    // Bu testlerden kaç tanesi çözülmüş
+    final result = await db.rawQuery(
+      'SELECT COUNT(DISTINCT testId) as count FROM TestResults WHERE testId IN ($placeholders)',
+      testIds,
+    );
+    return Sqflite.firstIntValue(result) ?? 0;
+  }
+
+  /// Konu için toplam flashcard set sayısı
+  Future<int> getFlashcardSetCountByTopic(String topicId) async {
+    Database db = await database;
+    final result = await db.rawQuery(
+      'SELECT COUNT(*) as count FROM BilgiKartlari WHERE konuID = ?',
+      [topicId],
+    );
+    return Sqflite.firstIntValue(result) ?? 0;
+  }
+
+  /// Oyun tipi için toplam level sayısı
+  Future<int> getTotalLevelCount(String gameType) async {
+    Database db = await database;
+    String table;
+    switch (gameType) {
+      case 'fill_blanks':
+        table = 'FillBlanksLevels';
+        break;
+      case 'guess':
+        table = 'GuessLevels';
+        break;
+      default:
+        return 0;
+    }
+    final result = await db.rawQuery('SELECT COUNT(*) as count FROM $table');
+    return Sqflite.firstIntValue(result) ?? 0;
+  }
+
+  /// Oyun tipi için tamamlanan level sayısı (GameResults'tan benzersiz details)
+  Future<int> getCompletedLevelCount(String gameType) async {
+    Database db = await database;
+    final result = await db.rawQuery(
+      'SELECT COUNT(DISTINCT details) as count FROM GameResults WHERE gameType = ? AND details IS NOT NULL',
+      [gameType],
+    );
+    return Sqflite.firstIntValue(result) ?? 0;
+  }
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // Flashcard Görüntüleme Takibi
+  // ════════════════════════════════════════════════════════════════════════════
+
+  /// Görüntülenen flashcard setini kaydet
+  Future<void> saveViewedFlashcardSet(String kartSetID, String topicID) async {
+    Database db = await database;
+    await db.insert('ViewedFlashcardSets', {
+      'kartSetID': kartSetID,
+      'topicID': topicID,
+      'viewedAt': DateTime.now().toIso8601String(),
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  /// Konu için görüntülenen flashcard set sayısı
+  Future<int> getViewedFlashcardSetCount(String topicId) async {
+    Database db = await database;
+    final result = await db.rawQuery(
+      'SELECT COUNT(*) as count FROM ViewedFlashcardSets WHERE topicID = ?',
+      [topicId],
+    );
+    return Sqflite.firstIntValue(result) ?? 0;
+  }
+
+  /// Derse ait tüm konu ID'lerini döner
+  Future<List<String>> getTopicIdsByLesson(String lessonId) async {
+    Database db = await database;
+    final result = await db.query(
+      'Konular',
+      columns: ['konuID'],
+      where: 'dersID = ?',
+      whereArgs: [lessonId],
+    );
+    return result.map((row) => row['konuID'] as String).toList();
+  }
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // Tekil Öğe Tamamlanma Kontrolü (YENİ badge için)
+  // ════════════════════════════════════════════════════════════════════════════
+
+  /// Belirli bir test çözülmüş mü?
+  Future<bool> isTestSolved(String testId) async {
+    Database db = await database;
+    final result = await db.query(
+      'TestResults',
+      where: 'testId = ?',
+      whereArgs: [testId],
+      limit: 1,
+    );
+    return result.isNotEmpty;
+  }
+
+  /// Belirli bir flashcard seti görüntülenmiş mi?
+  Future<bool> isFlashcardSetViewed(String kartSetID) async {
+    Database db = await database;
+    final result = await db.query(
+      'ViewedFlashcardSets',
+      where: 'kartSetID = ?',
+      whereArgs: [kartSetID],
+      limit: 1,
+    );
+    return result.isNotEmpty;
+  }
+
+  /// Belirli bir oyun level'ı tamamlanmış mı?
+  /// [gameType] - 'fill_blanks' veya 'guess'
+  /// [levelTitle] - Level başlığı (details alanında aranacak)
+  Future<bool> isLevelCompleted(String gameType, String levelTitle) async {
+    Database db = await database;
+    final result = await db.query(
+      'GameResults',
+      where: 'gameType = ? AND details LIKE ?',
+      whereArgs: [gameType, '%$levelTitle%'],
+      limit: 1,
+    );
+    return result.isNotEmpty;
   }
 }

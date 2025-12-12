@@ -4,10 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:convert';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../domain/entities/guess_level.dart';
 import 'guess_game_screen.dart';
 import '../../../../../services/database_helper.dart';
+import '../../../../../providers/repository_providers.dart';
 
 /// ═══════════════════════════════════════════════════════════════════════════
 /// 📳 SHAKE WAVE SELECTION - Salla Bakalım Seviye Seçim Ekranı
@@ -19,15 +21,16 @@ import '../../../../../services/database_helper.dart';
 /// - Haptic feedback
 /// ═══════════════════════════════════════════════════════════════════════════
 
-class GuessLevelSelectionScreen extends StatefulWidget {
+class GuessLevelSelectionScreen extends ConsumerStatefulWidget {
   const GuessLevelSelectionScreen({super.key});
 
   @override
-  State<GuessLevelSelectionScreen> createState() =>
+  ConsumerState<GuessLevelSelectionScreen> createState() =>
       _GuessLevelSelectionScreenState();
 }
 
-class _GuessLevelSelectionScreenState extends State<GuessLevelSelectionScreen>
+class _GuessLevelSelectionScreenState
+    extends ConsumerState<GuessLevelSelectionScreen>
     with TickerProviderStateMixin {
   // ═══════════════════════════════════════════════════════════════════════════
   // THEME COLORS
@@ -373,7 +376,12 @@ class _GuessLevelSelectionScreenState extends State<GuessLevelSelectionScreen>
       padding: const EdgeInsets.all(16),
       itemCount: _levels!.length,
       itemBuilder: (context, index) {
-        return _buildLevelCard(context, _levels![index], index)
+        return _GuessLevelCard(
+              level: _levels![index],
+              index: index,
+              glowAnimation: _glowAnimation,
+              getLevelColors: _getLevelColors,
+            )
             .animate()
             .fadeIn(
               duration: 400.ms,
@@ -514,8 +522,48 @@ class _GuessLevelSelectionScreenState extends State<GuessLevelSelectionScreen>
     );
   }
 
-  Widget _buildLevelCard(BuildContext context, GuessLevel level, int index) {
-    final colors = _getLevelColors(level.difficulty);
+  List<Color> _getLevelColors(int difficulty) {
+    switch (difficulty) {
+      case 1:
+        return [_neonGreen, _neonGreen.withValues(alpha: 0.7)];
+      case 2:
+        return [_neonOrange, _neonOrange.withValues(alpha: 0.7)];
+      case 3:
+        return [_neonPink, _neonPink.withValues(alpha: 0.7)];
+      default:
+        return [_neonCyan, _neonPurple];
+    }
+  }
+}
+
+/// ═══════════════════════════════════════════════════════════════════════════
+/// Level Kartı Widget'ı - YENİ/OYNANDI badge içerir
+/// ═══════════════════════════════════════════════════════════════════════════
+class _GuessLevelCard extends ConsumerWidget {
+  final GuessLevel level;
+  final int index;
+  final Animation<double> glowAnimation;
+  final List<Color> Function(int) getLevelColors;
+
+  const _GuessLevelCard({
+    required this.level,
+    required this.index,
+    required this.glowAnimation,
+    required this.getLevelColors,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = getLevelColors(level.difficulty);
+
+    // Level tamamlanmış mı kontrol et
+    final isCompletedAsync = ref.watch(
+      isLevelCompletedProvider((gameType: 'guess', levelTitle: level.title)),
+    );
+    final isCompleted = isCompletedAsync.maybeWhen(
+      data: (completed) => completed,
+      orElse: () => false,
+    );
 
     return GestureDetector(
       onTap: () {
@@ -531,7 +579,15 @@ class _GuessLevelSelectionScreenState extends State<GuessLevelSelectionScreen>
                 },
             transitionDuration: const Duration(milliseconds: 300),
           ),
-        );
+        ).then((_) {
+          // Oyun oynanınca provider'ı invalidate et
+          ref.invalidate(
+            isLevelCompletedProvider((
+              gameType: 'guess',
+              levelTitle: level.title,
+            )),
+          );
+        });
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
@@ -540,7 +596,7 @@ class _GuessLevelSelectionScreenState extends State<GuessLevelSelectionScreen>
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
             child: AnimatedBuilder(
-              animation: _glowAnimation,
+              animation: glowAnimation,
               builder: (context, child) {
                 return Container(
                   padding: const EdgeInsets.all(20),
@@ -555,15 +611,17 @@ class _GuessLevelSelectionScreenState extends State<GuessLevelSelectionScreen>
                     ),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                      color: colors[0].withValues(
-                        alpha: 0.3 + (0.2 * _glowAnimation.value),
-                      ),
+                      color: isCompleted
+                          ? Colors.green.withValues(alpha: 0.5)
+                          : colors[0].withValues(
+                              alpha: 0.3 + (0.2 * glowAnimation.value),
+                            ),
                       width: 1.5,
                     ),
                     boxShadow: [
                       BoxShadow(
                         color: colors[0].withValues(
-                          alpha: 0.15 * _glowAnimation.value,
+                          alpha: 0.15 * glowAnimation.value,
                         ),
                         blurRadius: 15,
                         spreadRadius: 2,
@@ -577,29 +635,46 @@ class _GuessLevelSelectionScreenState extends State<GuessLevelSelectionScreen>
                         width: 60,
                         height: 60,
                         decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: colors,
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
+                          gradient: isCompleted
+                              ? LinearGradient(
+                                  colors: [
+                                    Colors.green,
+                                    Colors.green.withValues(alpha: 0.7),
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                )
+                              : LinearGradient(
+                                  colors: colors,
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
                           borderRadius: BorderRadius.circular(16),
                           boxShadow: [
                             BoxShadow(
-                              color: colors[0].withValues(alpha: 0.4),
+                              color: isCompleted
+                                  ? Colors.green.withValues(alpha: 0.4)
+                                  : colors[0].withValues(alpha: 0.4),
                               blurRadius: 12,
                               spreadRadius: 2,
                             ),
                           ],
                         ),
                         child: Center(
-                          child: Text(
-                            '${index + 1}',
-                            style: GoogleFonts.orbitron(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
+                          child: isCompleted
+                              ? const Icon(
+                                  Icons.check,
+                                  color: Colors.white,
+                                  size: 28,
+                                )
+                              : Text(
+                                  '${index + 1}',
+                                  style: GoogleFonts.orbitron(
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
                         ),
                       ),
 
@@ -610,13 +685,80 @@ class _GuessLevelSelectionScreenState extends State<GuessLevelSelectionScreen>
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              level.title,
-                              style: GoogleFonts.nunito(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    level.title,
+                                    style: GoogleFonts.nunito(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                                // 🔴 YENİ veya OYNANDI badge
+                                if (!isCompleted)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      gradient: const LinearGradient(
+                                        colors: [
+                                          Color(0xFFFF6B6B),
+                                          Color(0xFFFF5252),
+                                        ],
+                                      ),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      'YENİ',
+                                      style: GoogleFonts.nunito(
+                                        color: Colors.white,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  )
+                                else
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.green.withValues(
+                                        alpha: 0.3,
+                                      ),
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(
+                                        color: Colors.green,
+                                        width: 1,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(
+                                          Icons.check,
+                                          color: Colors.green,
+                                          size: 12,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          'OYNANDI',
+                                          style: GoogleFonts.nunito(
+                                            color: Colors.green,
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                              ],
                             ),
                             const SizedBox(height: 4),
                             Text(
@@ -686,7 +828,9 @@ class _GuessLevelSelectionScreenState extends State<GuessLevelSelectionScreen>
                           ),
                         ),
                         child: Icon(
-                          Icons.play_arrow_rounded,
+                          isCompleted
+                              ? Icons.replay_rounded
+                              : Icons.play_arrow_rounded,
                           color: Colors.white,
                           size: 24,
                         ),
@@ -719,18 +863,5 @@ class _GuessLevelSelectionScreenState extends State<GuessLevelSelectionScreen>
         );
       }),
     );
-  }
-
-  List<Color> _getLevelColors(int difficulty) {
-    switch (difficulty) {
-      case 1:
-        return [_neonGreen, _neonGreen.withValues(alpha: 0.7)];
-      case 2:
-        return [_neonOrange, _neonOrange.withValues(alpha: 0.7)];
-      case 3:
-        return [_neonPink, _neonPink.withValues(alpha: 0.7)];
-      default:
-        return [_neonCyan, _neonPurple];
-    }
   }
 }

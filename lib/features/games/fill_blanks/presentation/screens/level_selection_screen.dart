@@ -4,22 +4,25 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../domain/entities/fill_blanks_level.dart';
 import 'fill_blanks_screen.dart';
 import '../../../../../services/database_helper.dart';
+import '../../../../../providers/repository_providers.dart';
 
 /// "Sky Journey" - Gökyüzü Yolculuğu
 /// Çocuklar için tasarlanmış, bulutların üzerinde ilerleyen sihirli bir seviye haritası
 /// Cümle Tamamlama oyunu seviye seçim ekranı
-class LevelSelectionScreen extends StatefulWidget {
+class LevelSelectionScreen extends ConsumerStatefulWidget {
   const LevelSelectionScreen({super.key});
 
   @override
-  State<LevelSelectionScreen> createState() => _LevelSelectionScreenState();
+  ConsumerState<LevelSelectionScreen> createState() =>
+      _LevelSelectionScreenState();
 }
 
-class _LevelSelectionScreenState extends State<LevelSelectionScreen>
+class _LevelSelectionScreenState extends ConsumerState<LevelSelectionScreen>
     with TickerProviderStateMixin {
   // Veritabanı ve veri yönetimi
   final DatabaseHelper _dbHelper = DatabaseHelper();
@@ -211,7 +214,17 @@ class _LevelSelectionScreenState extends State<LevelSelectionScreen>
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => FillBlanksScreen(level: level)),
-      );
+      ).then((_) {
+        // Oyun oynanınca badge'leri güncelle
+        if (mounted) {
+          ref.invalidate(
+            isLevelCompletedProvider((
+              gameType: 'fill_blanks',
+              levelTitle: level.title,
+            )),
+          );
+        }
+      });
     }
   }
 
@@ -632,8 +645,8 @@ class _LevelSelectionScreenState extends State<LevelSelectionScreen>
   }
 }
 
-/// Seviye Düğümü Widget'ı
-class _LevelNode extends StatefulWidget {
+/// Seviye Düğümü Widget'ı - YENİ/OYNANDI badge içerir
+class _LevelNode extends ConsumerStatefulWidget {
   final FillBlanksLevel level;
   final int index;
   final bool isActive;
@@ -662,10 +675,10 @@ class _LevelNode extends StatefulWidget {
   });
 
   @override
-  State<_LevelNode> createState() => _LevelNodeState();
+  ConsumerState<_LevelNode> createState() => _LevelNodeState();
 }
 
-class _LevelNodeState extends State<_LevelNode>
+class _LevelNodeState extends ConsumerState<_LevelNode>
     with SingleTickerProviderStateMixin {
   late AnimationController _shakeController;
   late Animation<double> _shakeAnimation;
@@ -697,6 +710,18 @@ class _LevelNodeState extends State<_LevelNode>
 
   @override
   Widget build(BuildContext context) {
+    // Veritabanından level tamamlanma durumunu kontrol et
+    final isCompletedAsync = ref.watch(
+      isLevelCompletedProvider((
+        gameType: 'fill_blanks',
+        levelTitle: widget.level.title,
+      )),
+    );
+    final isCompletedFromDb = isCompletedAsync.maybeWhen(
+      data: (completed) => completed,
+      orElse: () => false,
+    );
+
     return AnimatedBuilder(
           animation: _shakeAnimation,
           builder: (context, child) {
@@ -708,19 +733,59 @@ class _LevelNodeState extends State<_LevelNode>
           },
           child: GestureDetector(
             onTap: _handleTap,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+            child: Stack(
+              clipBehavior: Clip.none,
+              alignment: Alignment.center,
               children: [
-                // Ana düğüm
-                _buildNode(),
-                // Seviye bilgisi (küçük etiket)
-                const SizedBox(height: 6),
-                _buildLevelLabel(),
-                // Yıldızlar (tamamlanmış seviyeler için)
-                if (widget.isCompleted) ...[
-                  const SizedBox(height: 4),
-                  _buildStars(),
-                ],
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Ana düğüm
+                    _buildNode(),
+                    // Seviye bilgisi (küçük etiket)
+                    const SizedBox(height: 6),
+                    _buildLevelLabel(),
+                    // Yıldızlar (tamamlanmış seviyeler için)
+                    if (widget.isCompleted || isCompletedFromDb) ...[
+                      const SizedBox(height: 4),
+                      _buildStars(),
+                    ],
+                  ],
+                ),
+                // 🔴 YENİ badge - Sağ üstte
+                if (!isCompletedFromDb && !widget.isLocked)
+                  Positioned(
+                    top: -5,
+                    right: -15,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFFFF6B6B), Color(0xFFFF5252)],
+                        ),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.white, width: 1.5),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.red.withValues(alpha: 0.4),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Text(
+                        'YENİ',
+                        style: GoogleFonts.nunito(
+                          color: Colors.white,
+                          fontSize: 8,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),

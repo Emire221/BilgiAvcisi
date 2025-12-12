@@ -1,21 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'dart:math' as math;
 import '../lesson_selection_screen.dart';
 import '../../services/database_helper.dart';
+import '../../providers/repository_providers.dart';
 import '../../features/exam/presentation/widgets/weekly_exam_card.dart';
 
 /// Macera Haritası Dersleri - Veritabanından okunan dersler
-class LessonsTab extends StatefulWidget {
+class LessonsTab extends ConsumerStatefulWidget {
   const LessonsTab({super.key});
 
   @override
-  State<LessonsTab> createState() => _LessonsTabState();
+  ConsumerState<LessonsTab> createState() => _LessonsTabState();
 }
 
-class _LessonsTabState extends State<LessonsTab> with TickerProviderStateMixin {
+class _LessonsTabState extends ConsumerState<LessonsTab>
+    with TickerProviderStateMixin {
   late ScrollController _scrollController;
   List<_LessonNode> _lessons = [];
   bool _isLoading = true;
@@ -378,6 +381,15 @@ class _LessonsTabState extends State<LessonsTab> with TickerProviderStateMixin {
   Widget _buildLessonNode(_LessonNode lesson, int index, bool isDarkMode) {
     const nodeSize = 85.0;
 
+    // Ders için tamamlanmamış içerik sayısını al
+    final progressAsync = ref.watch(
+      lessonProgressProvider((lessonId: lesson.dersId, mode: 'all')),
+    );
+    final uncompletedCount = progressAsync.maybeWhen(
+      data: (count) => count,
+      orElse: () => 0,
+    );
+
     return GestureDetector(
       onTap: () {
         HapticFeedback.mediumImpact();
@@ -414,6 +426,38 @@ class _LessonsTabState extends State<LessonsTab> with TickerProviderStateMixin {
               child: FaIcon(lesson.icon, color: Colors.white, size: 32),
             ),
           ),
+
+          // 🔴 Badge - Tamamlanmamış içerik sayısı
+          if (uncompletedCount > 0)
+            Positioned(
+              top: -8,
+              right: -8,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFFF6B6B), Color(0xFFFF5252)],
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.white, width: 2),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.red.withValues(alpha: 0.4),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Text(
+                  uncompletedCount > 99 ? '99+' : '$uncompletedCount',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
 
           // Ders başlığı
           Positioned(
@@ -648,7 +692,19 @@ class _LessonsTabState extends State<LessonsTab> with TickerProviderStateMixin {
           );
         },
       ),
-    );
+    ).then((_) => _refreshLessonProgress());
+  }
+
+  /// Dersten geri dönüldüğünde badge'leri güncelle
+  void _refreshLessonProgress() {
+    if (mounted) {
+      for (final lesson in _lessons) {
+        ref.invalidate(
+          lessonProgressProvider((lessonId: lesson.dersId, mode: 'all')),
+        );
+      }
+      setState(() {});
+    }
   }
 }
 

@@ -30,6 +30,10 @@ class ThemeManager extends ValueNotifier<ThemeMode> {
 // Şimdilik, global bir değişken kullanarak basitleştireceğiz.
 final themeManager = ThemeManager();
 
+/// Global RouteObserver - ekranlar arası geçişleri takip etmek için
+final RouteObserver<PageRoute<dynamic>> routeObserver =
+    RouteObserver<PageRoute<dynamic>>();
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
@@ -108,6 +112,7 @@ class MyApp extends StatelessWidget {
             useMaterial3: true,
           ),
           themeMode: currentMode,
+          navigatorObservers: [routeObserver],
           home: const SplashScreen(),
         );
       },

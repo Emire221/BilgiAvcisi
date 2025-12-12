@@ -4,14 +4,16 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:confetti/confetti.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../domain/entities/guess_level.dart';
 import '../../../../../services/database_helper.dart';
+import '../../../../../providers/repository_providers.dart';
 
 /// Salla Bakalım Sonuç Ekranı - Shake Wave Victory Teması
-class GuessResultScreen extends StatefulWidget {
+class GuessResultScreen extends ConsumerStatefulWidget {
   final GuessLevel level;
   final int correctCount;
   final int totalQuestions;
@@ -26,10 +28,10 @@ class GuessResultScreen extends StatefulWidget {
   });
 
   @override
-  State<GuessResultScreen> createState() => _GuessResultScreenState();
+  ConsumerState<GuessResultScreen> createState() => _GuessResultScreenState();
 }
 
-class _GuessResultScreenState extends State<GuessResultScreen>
+class _GuessResultScreenState extends ConsumerState<GuessResultScreen>
     with TickerProviderStateMixin {
   late ConfettiController _confettiController;
   late AnimationController _scoreController;
@@ -114,6 +116,9 @@ class _GuessResultScreenState extends State<GuessResultScreen>
         difficulty: widget.level.difficulty,
         totalAttempts: 0, // Controller'dan gelmediği için şimdilik 0
       );
+
+      // 🔴 Game progress provider'ı invalidate et - badge güncellensin
+      ref.invalidate(gameProgressProvider('guess'));
     } catch (e) {
       if (kDebugMode) debugPrint('Salla Bakalım sonucu kaydedilemedi: $e');
     }

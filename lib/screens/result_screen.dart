@@ -12,6 +12,7 @@ import 'package:lottie/lottie.dart';
 import '../services/database_helper.dart';
 import '../features/mascot/presentation/providers/mascot_provider.dart';
 import '../features/mascot/domain/entities/mascot.dart';
+import '../providers/repository_providers.dart';
 import 'answer_key_screen.dart';
 import 'main_screen.dart';
 
@@ -150,6 +151,20 @@ class _ResultScreenState extends ConsumerState<ResultScreen>
       debugPrint(
         'Sonuç kaydedildi: ${widget.isFlashcard ? "flashcard" : "test"} - Skor: ${widget.score}',
       );
+
+      // 🔴 Progress provider'larını invalidate et - badge'ler güncellensin
+      if (widget.topicId.isNotEmpty) {
+        // Tüm modlar için invalidate
+        ref.invalidate(
+          topicProgressProvider((topicId: widget.topicId, mode: 'test')),
+        );
+        ref.invalidate(
+          topicProgressProvider((topicId: widget.topicId, mode: 'flashcard')),
+        );
+        ref.invalidate(
+          topicProgressProvider((topicId: widget.topicId, mode: 'all')),
+        );
+      }
     } catch (e) {
       if (kDebugMode) debugPrint('Sonuç kaydetme hatası: $e');
     }

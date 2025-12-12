@@ -8,6 +8,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../domain/entities/fill_blanks_level.dart';
 import '../../domain/entities/fill_blanks_question.dart';
 import '../../../../../services/database_helper.dart';
+import '../../../../../providers/repository_providers.dart';
 import '../../../../mascot/presentation/providers/mascot_provider.dart';
 
 /// "Sky Journey" - Cümle Tamamlama Oyunu
@@ -973,6 +974,9 @@ class _FillBlanksScreenState extends ConsumerState<FillBlanksScreen>
         totalQuestions: _questions.length,
         details: widget.level.title,
       );
+
+      // 🔴 Game progress provider'ı invalidate et - badge güncellensin
+      ref.invalidate(gameProgressProvider('fill_blanks'));
 
       // Maskota XP ekle
       await _addXpToMascot();

@@ -7,6 +7,8 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:lottie/lottie.dart';
 import '../widgets/glass_container.dart';
 import '../services/data_service.dart';
+import '../providers/repository_providers.dart';
+import '../main.dart' show routeObserver;
 import 'test_list_screen.dart';
 import 'flashcard_set_selection_screen.dart';
 import '../core/providers/user_provider.dart';
@@ -32,7 +34,7 @@ class TopicSelectionScreen extends ConsumerStatefulWidget {
 }
 
 class _TopicSelectionScreenState extends ConsumerState<TopicSelectionScreen>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, RouteAware {
   final DataService _dataService = DataService();
   List<dynamic> _topics = [];
   bool _isLoading = true;
@@ -49,9 +51,44 @@ class _TopicSelectionScreenState extends ConsumerState<TopicSelectionScreen>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // RouteObserver'a abone ol
+    final route = ModalRoute.of(context);
+    if (route is PageRoute) {
+      routeObserver.subscribe(this, route);
+    }
+  }
+
+  @override
   void dispose() {
+    routeObserver.unsubscribe(this);
     _bgController.dispose();
     super.dispose();
+  }
+
+  /// Başka bir ekrandan bu ekrana geri dönüldüğünde çağrılır
+  @override
+  void didPopNext() {
+    super.didPopNext();
+    // Tüm topic progress provider'larını invalidate et
+    _invalidateAllTopicProgress();
+  }
+
+  /// Tüm konuların progress bilgisini yenile
+  void _invalidateAllTopicProgress() {
+    for (final topic in _topics) {
+      final topicId = topic['konuID'] as String? ?? '';
+      if (topicId.isNotEmpty) {
+        ref.invalidate(
+          topicProgressProvider((topicId: topicId, mode: widget.mode)),
+        );
+      }
+    }
+    // Widget tree'yi rebuild et
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   Future<void> _loadTopics() async {
@@ -494,7 +531,7 @@ class _TopicSelectionScreenState extends ConsumerState<TopicSelectionScreen>
 }
 
 /// Mission Kart Widget'ı
-class _TopicMissionCard extends StatefulWidget {
+class _TopicMissionCard extends ConsumerStatefulWidget {
   final dynamic topic;
   final int index;
   final bool isLast;
@@ -512,10 +549,10 @@ class _TopicMissionCard extends StatefulWidget {
   });
 
   @override
-  State<_TopicMissionCard> createState() => _TopicMissionCardState();
+  ConsumerState<_TopicMissionCard> createState() => _TopicMissionCardState();
 }
 
-class _TopicMissionCardState extends State<_TopicMissionCard> {
+class _TopicMissionCardState extends ConsumerState<_TopicMissionCard> {
   bool _isPressed = false;
 
   void _onTapDown(TapDownDetails details) {
@@ -533,83 +570,137 @@ class _TopicMissionCardState extends State<_TopicMissionCard> {
 
   @override
   Widget build(BuildContext context) {
+    // Progress provider'dan tamamlanmamış içerik sayısını al
+    final topicId = widget.topic['konuID'] as String? ?? '';
+    final progressAsync = ref.watch(
+      topicProgressProvider((topicId: topicId, mode: widget.mode)),
+    );
+    final uncompletedCount = progressAsync.valueOrNull ?? 0;
+
     return Column(
       children: [
         // Bağlantı çizgisi (ilk değilse)
         if (widget.index > 0) _buildConnector(),
 
-        // Ana kart
-        AnimatedScale(
-          scale: _isPressed ? 0.97 : 1.0,
-          duration: const Duration(milliseconds: 150),
-          child: GestureDetector(
-            onTapDown: _onTapDown,
-            onTapUp: _onTapUp,
-            onTapCancel: _onTapCancel,
-            child: Container(
-              margin: const EdgeInsets.symmetric(vertical: 4),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: widget.lessonColor.withValues(
-                      alpha: _isPressed ? 0.4 : 0.25,
-                    ),
-                    blurRadius: _isPressed ? 20 : 15,
-                    spreadRadius: _isPressed ? 2 : 0,
-                    offset: const Offset(0, 5),
-                  ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(20),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          Colors.white.withValues(alpha: 0.2),
-                          Colors.white.withValues(alpha: 0.08),
-                        ],
-                      ),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: Colors.white.withValues(
+        // Ana kart - Stack ile badge ekleniyor
+        Stack(
+          clipBehavior: Clip.none,
+          children: [
+            AnimatedScale(
+              scale: _isPressed ? 0.97 : 1.0,
+              duration: const Duration(milliseconds: 150),
+              child: GestureDetector(
+                onTapDown: _onTapDown,
+                onTapUp: _onTapUp,
+                onTapCancel: _onTapCancel,
+                child: Container(
+                  margin: const EdgeInsets.symmetric(vertical: 4),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: widget.lessonColor.withValues(
                           alpha: _isPressed ? 0.4 : 0.25,
                         ),
-                        width: 1.5,
+                        blurRadius: _isPressed ? 20 : 15,
+                        spreadRadius: _isPressed ? 2 : 0,
+                        offset: const Offset(0, 5),
                       ),
-                    ),
-                    child: Column(
-                      children: [
-                        // Üst kısım - Rozet ve Konu adı
-                        Row(
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(20),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              Colors.white.withValues(alpha: 0.2),
+                              Colors.white.withValues(alpha: 0.08),
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: Colors.white.withValues(
+                              alpha: _isPressed ? 0.4 : 0.25,
+                            ),
+                            width: 1.5,
+                          ),
+                        ),
+                        child: Column(
                           children: [
-                            // Level Rozeti
-                            _buildLevelBadge(),
-                            const SizedBox(width: 16),
-                            // Konu bilgisi
-                            Expanded(child: _buildTopicInfo()),
+                            // Üst kısım - Rozet ve Konu adı
+                            Row(
+                              children: [
+                                // Level Rozeti
+                                _buildLevelBadge(),
+                                const SizedBox(width: 16),
+                                // Konu bilgisi
+                                Expanded(child: _buildTopicInfo()),
+                              ],
+                            ),
+
+                            const SizedBox(height: 14),
+
+                            // Alt kısım - Aksiyon butonları
+                            _buildActionButtons(),
                           ],
                         ),
-
-                        const SizedBox(height: 14),
-
-                        // Alt kısım - Aksiyon butonları
-                        _buildActionButtons(),
-                      ],
+                      ),
                     ),
                   ),
                 ),
               ),
             ),
-          ),
+
+            // 🔴 Tamamlanmamış içerik badge'i
+            if (uncompletedCount > 0)
+              Positioned(
+                top: -2,
+                right: -2,
+                child: _buildProgressBadge(uncompletedCount),
+              ),
+          ],
         ),
       ],
+    );
+  }
+
+  /// 🔴 Tamamlanmamış içerik sayısı badge'i
+  Widget _buildProgressBadge(int count) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: const Duration(milliseconds: 500),
+      curve: Curves.elasticOut,
+      builder: (context, value, child) =>
+          Transform.scale(scale: value, child: child),
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFF3B30), // iOS Red
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.white, width: 2),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFFF3B30).withValues(alpha: 0.4),
+              blurRadius: 8,
+              spreadRadius: 1,
+            ),
+          ],
+        ),
+        child: Text(
+          count > 99 ? '99+' : count.toString(),
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 11,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
     );
   }
 
@@ -715,7 +806,7 @@ class _TopicMissionCardState extends State<_TopicMissionCard> {
               isPrimary: true,
               onTap: () {
                 HapticFeedback.mediumImpact();
-                // ✅ NAVİGASYON KORUNUYOR
+                // ✅ NAVİGASYON KORUNUYOR + Geri dönüşte refresh
                 Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -726,7 +817,16 @@ class _TopicMissionCardState extends State<_TopicMissionCard> {
                       color: widget.lessonColor,
                     ),
                   ),
-                );
+                ).then((_) {
+                  // Geri dönüldüğünde progress'i yenile
+                  final topicId = widget.topic['konuID'] as String? ?? '';
+                  ref.invalidate(
+                    topicProgressProvider((
+                      topicId: topicId,
+                      mode: widget.mode,
+                    )),
+                  );
+                });
               },
             ),
           ),
@@ -745,7 +845,7 @@ class _TopicMissionCardState extends State<_TopicMissionCard> {
               isPrimary: false,
               onTap: () {
                 HapticFeedback.mediumImpact();
-                // ✅ NAVİGASYON KORUNUYOR
+                // ✅ NAVİGASYON KORUNUYOR + Geri dönüşte refresh
                 Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -755,7 +855,16 @@ class _TopicMissionCardState extends State<_TopicMissionCard> {
                       lessonName: widget.lessonName,
                     ),
                   ),
-                );
+                ).then((_) {
+                  // Geri dönüldüğünde progress'i yenile
+                  final topicId = widget.topic['konuID'] as String? ?? '';
+                  ref.invalidate(
+                    topicProgressProvider((
+                      topicId: topicId,
+                      mode: widget.mode,
+                    )),
+                  );
+                });
               },
             ),
           ),

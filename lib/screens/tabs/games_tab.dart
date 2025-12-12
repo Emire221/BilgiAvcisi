@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:lottie/lottie.dart';
@@ -8,23 +9,26 @@ import '../../features/games/fill_blanks/presentation/screens/level_selection_sc
 import '../../features/games/guess/presentation/screens/guess_level_selection_screen.dart';
 import '../../features/games/memory/presentation/screens/memory_game_screen.dart';
 import '../../features/duel/presentation/screens/duel_game_selection_screen.dart';
+import '../../providers/repository_providers.dart';
 
 /// 🎮 Neon Arcade - Oyun Salonu
 /// Bento Grid layout ile modern oyun kartları
-class GamesTab extends StatefulWidget {
+class GamesTab extends ConsumerStatefulWidget {
   const GamesTab({super.key});
 
   @override
-  State<GamesTab> createState() => _GamesTabState();
+  ConsumerState<GamesTab> createState() => _GamesTabState();
 }
 
-class _GamesTabState extends State<GamesTab> with TickerProviderStateMixin {
+class _GamesTabState extends ConsumerState<GamesTab>
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   // Oyun verileri - Navigasyon mantığı korunuyor
   late final List<_GameData> _games;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _games = [
       _GameData(
         id: 'duel',
@@ -38,7 +42,7 @@ class _GamesTabState extends State<GamesTab> with TickerProviderStateMixin {
         onTap: (ctx) => Navigator.push(
           ctx,
           MaterialPageRoute(builder: (_) => const DuelGameSelectionScreen()),
-        ),
+        ).then((_) => _refreshGameProgress()),
         isHero: true,
       ),
       _GameData(
@@ -52,7 +56,7 @@ class _GamesTabState extends State<GamesTab> with TickerProviderStateMixin {
         onTap: (ctx) => Navigator.push(
           ctx,
           MaterialPageRoute(builder: (_) => const MemoryGameScreen()),
-        ),
+        ).then((_) => _refreshGameProgress()),
       ),
       _GameData(
         id: 'fill_blanks',
@@ -65,7 +69,7 @@ class _GamesTabState extends State<GamesTab> with TickerProviderStateMixin {
         onTap: (ctx) => Navigator.push(
           ctx,
           MaterialPageRoute(builder: (_) => const LevelSelectionScreen()),
-        ),
+        ).then((_) => _refreshGameProgress()),
       ),
       _GameData(
         id: 'guess',
@@ -78,10 +82,25 @@ class _GamesTabState extends State<GamesTab> with TickerProviderStateMixin {
         onTap: (ctx) => Navigator.push(
           ctx,
           MaterialPageRoute(builder: (_) => const GuessLevelSelectionScreen()),
-        ),
+        ).then((_) => _refreshGameProgress()),
         isWide: true,
       ),
     ];
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  /// Oyundan geri dönüldüğünde badge'leri güncelle
+  void _refreshGameProgress() {
+    if (mounted) {
+      ref.invalidate(gameProgressProvider('fill_blanks'));
+      ref.invalidate(gameProgressProvider('guess'));
+      setState(() {});
+    }
   }
 
   @override
@@ -286,7 +305,16 @@ class _GamesTabState extends State<GamesTab> with TickerProviderStateMixin {
     required double height,
     required int animationDelay,
   }) {
-    return _ArcadeGameCard(game: game, isDarkMode: isDarkMode, height: height)
+    // Oyun için progress bilgisini al
+    final progressAsync = ref.watch(gameProgressProvider(game.id));
+    final badgeCount = progressAsync.valueOrNull ?? 0;
+
+    return _ArcadeGameCard(
+          game: game,
+          isDarkMode: isDarkMode,
+          height: height,
+          badgeCount: badgeCount,
+        )
         .animate()
         .fadeIn(
           duration: 500.ms,
@@ -336,11 +364,13 @@ class _ArcadeGameCard extends StatefulWidget {
   final _GameData game;
   final bool isDarkMode;
   final double height;
+  final int badgeCount;
 
   const _ArcadeGameCard({
     required this.game,
     required this.isDarkMode,
     required this.height,
+    this.badgeCount = 0,
   });
 
   @override
@@ -415,6 +445,40 @@ class _ArcadeGameCardState extends State<_ArcadeGameCard>
     );
   }
 
+  /// 🔴 Tamamlanmamış level sayısı badge'i (Animasyonlu)
+  Widget _buildProgressBadge(int count) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: const Duration(milliseconds: 600),
+      curve: Curves.elasticOut,
+      builder: (context, value, child) =>
+          Transform.scale(scale: value, child: child),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFF3B30), // iOS Red
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white, width: 2),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFFF3B30).withValues(alpha: 0.5),
+              blurRadius: 10,
+              spreadRadius: 2,
+            ),
+          ],
+        ),
+        child: Text(
+          count > 99 ? '99+' : count.toString(),
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
@@ -427,285 +491,307 @@ class _ArcadeGameCardState extends State<_ArcadeGameCard>
         onTapUp: _onTapUp,
         onTapCancel: _onTapCancel,
         onTap: _onTap,
-        child: Container(
-          height: widget.height,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: [
-              // Neon glow efekti
-              BoxShadow(
-                color: widget.game.glowColor.withValues(
-                  alpha: _isPressed ? 0.6 : 0.4,
-                ),
-                blurRadius: _isPressed ? 25 : 20,
-                spreadRadius: _isPressed ? 2 : 0,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Container(
+              height: widget.height,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  // Neon glow efekti
+                  BoxShadow(
+                    color: widget.game.glowColor.withValues(
+                      alpha: _isPressed ? 0.6 : 0.4,
+                    ),
+                    blurRadius: _isPressed ? 25 : 20,
+                    spreadRadius: _isPressed ? 2 : 0,
+                  ),
+                  // Alt gölge
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.3),
+                    blurRadius: 15,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
               ),
-              // Alt gölge
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.3),
-                blurRadius: 15,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(24),
-            child: Stack(
-              children: [
-                // Gradient arka plan
-                Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: widget.game.gradientColors,
-                    ),
-                  ),
-                ),
-
-                // Glass efekti
-                BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          Colors.white.withValues(alpha: 0.2),
-                          Colors.white.withValues(alpha: 0.05),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-
-                // Dekoratif daireler (sadece lottie yoksa göster)
-                if (widget.game.lottiePath == null)
-                  Positioned(
-                    top: -30,
-                    left: -30,
-                    child: Container(
-                      width: 100,
-                      height: 100,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.white.withValues(alpha: 0.1),
-                      ),
-                    ),
-                  ),
-
-                // Hero kart için tam ekran Lottie animasyonu
-                if (widget.game.lottiePath != null && widget.game.isHero)
-                  Positioned(
-                    top: 0,
-                    bottom: 0,
-                    left: -3,
-                    right: 0,
-                    child: Lottie.asset(
-                      widget.game.lottiePath!,
-                      fit: BoxFit.cover,
-                      animate: true,
-                      errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-                    ),
-                  ),
-
-                // Hero kart için koyu overlay (metin okunabilirliği için)
-                if (widget.game.lottiePath != null && widget.game.isHero)
-                  Positioned.fill(
-                    child: Container(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(24),
+                child: Stack(
+                  children: [
+                    // Gradient arka plan
+                    Container(
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.transparent,
-                            Colors.black.withValues(alpha: 0.4),
-                            Colors.black.withValues(alpha: 0.7),
-                          ],
-                          stops: const [0.0, 0.5, 1.0],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: widget.game.gradientColors,
                         ),
                       ),
                     ),
-                  ),
 
-                // Sağ tarafta animasyonlu görsel (Hero olmayan kartlar için)
-                if (!widget.game.isHero || widget.game.lottiePath == null)
-                  Positioned(
-                    right: widget.game.isHero ? -10 : 5,
-                    bottom: widget.game.isHero ? -10 : 15,
-                    child: widget.game.lottiePath != null
-                        // Lottie animasyonu varsa kullan
-                        ? SizedBox(
-                            width: 100,
-                            height: 100,
-                            child: Lottie.asset(
-                              widget.game.lottiePath!,
-                              fit: BoxFit.contain,
-                              animate: true,
-                              errorBuilder: (_, __, ___) =>
-                                  _buildIconFallback(),
-                            ),
-                          )
-                        // Yoksa ikon kullan
-                        : Container(
-                                width: widget.game.isHero ? 100 : 80,
-                                height: widget.game.isHero ? 100 : 80,
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.15),
-                                  shape: BoxShape.circle,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: widget.game.glowColor.withValues(
-                                        alpha: 0.3,
-                                      ),
-                                      blurRadius: 20,
-                                      spreadRadius: 5,
-                                    ),
-                                  ],
-                                ),
-                                child: Center(
-                                  child: FaIcon(
-                                    widget.game.icon,
-                                    size: widget.game.isHero ? 45 : 35,
-                                    color: Colors.white.withValues(alpha: 0.9),
-                                  ),
-                                ),
-                              )
-                              .animate(onPlay: (c) => c.repeat(reverse: true))
-                              .moveY(begin: 0, end: -8, duration: 1500.ms)
-                              .scale(
-                                begin: const Offset(1, 1),
-                                end: const Offset(1.08, 1.08),
-                                duration: 1500.ms,
-                              ),
-                  ),
-
-                // İçerik
-                Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Hero badge
-                      if (widget.game.isHero)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.4),
-                            ),
-                          ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.star, color: Colors.amber, size: 14),
-                              SizedBox(width: 4),
-                              Text(
-                                'POPÜLER',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 1,
-                                ),
-                              ),
+                    // Glass efekti
+                    BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              Colors.white.withValues(alpha: 0.2),
+                              Colors.white.withValues(alpha: 0.05),
                             ],
                           ),
                         ),
-
-                      if (widget.game.isHero) const SizedBox(height: 8),
-
-                      // Başlık
-                      Text(
-                        widget.game.title,
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: widget.game.isHero ? 26 : 20,
-                          fontWeight: FontWeight.bold,
-                          shadows: [
-                            Shadow(
-                              color: Colors.black.withValues(alpha: 0.3),
-                              blurRadius: 10,
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      const SizedBox(height: 4),
-
-                      // Alt başlık
-                      Text(
-                        widget.game.subtitle,
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.9),
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-
-                      const Spacer(),
-
-                      // Oyna butonu
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 10,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(30),
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.4),
-                            width: 1.5,
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              'Oyna',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: widget.game.isHero ? 16 : 14,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            const Icon(
-                              Icons.arrow_forward_rounded,
-                              color: Colors.white,
-                              size: 18,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Parlak kenar efekti (Border Gradient)
-                Positioned.fill(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(
-                        color: Colors.white.withValues(
-                          alpha: _isPressed ? 0.5 : 0.3,
-                        ),
-                        width: 2,
                       ),
                     ),
-                  ),
+
+                    // Dekoratif daireler (sadece lottie yoksa göster)
+                    if (widget.game.lottiePath == null)
+                      Positioned(
+                        top: -30,
+                        left: -30,
+                        child: Container(
+                          width: 100,
+                          height: 100,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white.withValues(alpha: 0.1),
+                          ),
+                        ),
+                      ),
+
+                    // Hero kart için tam ekran Lottie animasyonu
+                    if (widget.game.lottiePath != null && widget.game.isHero)
+                      Positioned(
+                        top: 0,
+                        bottom: 0,
+                        left: -3,
+                        right: 0,
+                        child: Lottie.asset(
+                          widget.game.lottiePath!,
+                          fit: BoxFit.cover,
+                          animate: true,
+                          errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                        ),
+                      ),
+
+                    // Hero kart için koyu overlay (metin okunabilirliği için)
+                    if (widget.game.lottiePath != null && widget.game.isHero)
+                      Positioned.fill(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.transparent,
+                                Colors.black.withValues(alpha: 0.4),
+                                Colors.black.withValues(alpha: 0.7),
+                              ],
+                              stops: const [0.0, 0.5, 1.0],
+                            ),
+                          ),
+                        ),
+                      ),
+
+                    // Sağ tarafta animasyonlu görsel (Hero olmayan kartlar için)
+                    if (!widget.game.isHero || widget.game.lottiePath == null)
+                      Positioned(
+                        right: widget.game.isHero ? -10 : 5,
+                        bottom: widget.game.isHero ? -10 : 15,
+                        child: widget.game.lottiePath != null
+                            // Lottie animasyonu varsa kullan
+                            ? SizedBox(
+                                width: 100,
+                                height: 100,
+                                child: Lottie.asset(
+                                  widget.game.lottiePath!,
+                                  fit: BoxFit.contain,
+                                  animate: true,
+                                  errorBuilder: (_, __, ___) =>
+                                      _buildIconFallback(),
+                                ),
+                              )
+                            // Yoksa ikon kullan
+                            : Container(
+                                    width: widget.game.isHero ? 100 : 80,
+                                    height: widget.game.isHero ? 100 : 80,
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withValues(
+                                        alpha: 0.15,
+                                      ),
+                                      shape: BoxShape.circle,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: widget.game.glowColor
+                                              .withValues(alpha: 0.3),
+                                          blurRadius: 20,
+                                          spreadRadius: 5,
+                                        ),
+                                      ],
+                                    ),
+                                    child: Center(
+                                      child: FaIcon(
+                                        widget.game.icon,
+                                        size: widget.game.isHero ? 45 : 35,
+                                        color: Colors.white.withValues(
+                                          alpha: 0.9,
+                                        ),
+                                      ),
+                                    ),
+                                  )
+                                  .animate(
+                                    onPlay: (c) => c.repeat(reverse: true),
+                                  )
+                                  .moveY(begin: 0, end: -8, duration: 1500.ms)
+                                  .scale(
+                                    begin: const Offset(1, 1),
+                                    end: const Offset(1.08, 1.08),
+                                    duration: 1500.ms,
+                                  ),
+                      ),
+
+                    // İçerik
+                    Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Hero badge
+                          if (widget.game.isHero)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.4),
+                                ),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.star,
+                                    color: Colors.amber,
+                                    size: 14,
+                                  ),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    'POPÜLER',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 1,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                          if (widget.game.isHero) const SizedBox(height: 8),
+
+                          // Başlık
+                          Text(
+                            widget.game.title,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: widget.game.isHero ? 26 : 20,
+                              fontWeight: FontWeight.bold,
+                              shadows: [
+                                Shadow(
+                                  color: Colors.black.withValues(alpha: 0.3),
+                                  blurRadius: 10,
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          const SizedBox(height: 4),
+
+                          // Alt başlık
+                          Text(
+                            widget.game.subtitle,
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.9),
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+
+                          const Spacer(),
+
+                          // Oyna butonu
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 10,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(30),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.4),
+                                width: 1.5,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  'Oyna',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: widget.game.isHero ? 16 : 14,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                const Icon(
+                                  Icons.arrow_forward_rounded,
+                                  color: Colors.white,
+                                  size: 18,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Parlak kenar efekti (Border Gradient)
+                    Positioned.fill(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(
+                            color: Colors.white.withValues(
+                              alpha: _isPressed ? 0.5 : 0.3,
+                            ),
+                            width: 2,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
-          ),
+
+            // 🔴 Tamamlanmamış level badge'i
+            if (widget.badgeCount > 0)
+              Positioned(
+                top: -6,
+                right: -6,
+                child: _buildProgressBadge(widget.badgeCount),
+              ),
+          ],
         ),
       ),
     );

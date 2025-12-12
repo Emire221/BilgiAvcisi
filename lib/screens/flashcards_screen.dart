@@ -11,6 +11,8 @@ import 'package:percent_indicator/linear_percent_indicator.dart';
 import 'package:confetti/confetti.dart';
 
 import '../models/flashcard_model.dart';
+import '../services/database_helper.dart';
+import '../providers/repository_providers.dart';
 import 'result_screen.dart';
 
 /// 🏯 Holografik Bilgi Dojo'su
@@ -24,12 +26,14 @@ import 'result_screen.dart';
 class FlashcardsScreen extends ConsumerStatefulWidget {
   final String? topicId;
   final String? topicName;
+  final String? kartSetID; // Badge takibi için
   final List<FlashcardModel>? initialCards;
 
   const FlashcardsScreen({
     super.key,
     this.topicId,
     this.topicName,
+    this.kartSetID,
     this.initialCards,
   });
 
@@ -362,6 +366,9 @@ class _FlashcardsScreenState extends ConsumerState<FlashcardsScreen>
     _confettiController.play();
     HapticFeedback.heavyImpact();
 
+    // 🔴 Set tamamlandı, veritabanına kaydet
+    _saveFlashcardSetViewed();
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -397,6 +404,27 @@ class _FlashcardsScreenState extends ConsumerState<FlashcardsScreen>
         },
       ),
     );
+  }
+
+  /// Flashcard seti görüntülendi olarak kaydet
+  Future<void> _saveFlashcardSetViewed() async {
+    if (widget.kartSetID != null && widget.topicId != null) {
+      try {
+        await DatabaseHelper().saveViewedFlashcardSet(
+          widget.kartSetID!,
+          widget.topicId!,
+        );
+        // Provider'ı invalidate et - badge güncellensin
+        ref.invalidate(
+          topicProgressProvider((topicId: widget.topicId!, mode: 'flashcard')),
+        );
+        ref.invalidate(
+          topicProgressProvider((topicId: widget.topicId!, mode: 'all')),
+        );
+      } catch (e) {
+        debugPrint('Flashcard set kaydı hatası: $e');
+      }
+    }
   }
 
   // ─────────────────────────────────────────────────────────────────────────

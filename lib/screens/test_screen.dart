@@ -16,9 +16,16 @@ import 'result_screen.dart';
 class TestScreen extends ConsumerStatefulWidget {
   final String? topicId;
   final String? topicName;
+  final String? testId;
   final Map<String, dynamic>? testData;
 
-  const TestScreen({super.key, this.topicId, this.topicName, this.testData});
+  const TestScreen({
+    super.key,
+    this.topicId,
+    this.topicName,
+    this.testId,
+    this.testData,
+  });
 
   @override
   ConsumerState<TestScreen> createState() => _TestScreenState();
@@ -50,16 +57,20 @@ class _TestScreenState extends ConsumerState<TestScreen>
       duration: const Duration(milliseconds: 2000),
     )..repeat(reverse: true);
 
-    // Test başlat - MANTIK KORUNUYOR
+    // Test başlat - MANTIK KORUNUYOR + testId eklendi
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (widget.testData != null) {
         final questions = widget.testData!['sorular'] as List<dynamic>? ?? [];
         final questionModels = questions
             .map((q) => QuestionModel.fromJson(q as Map<String, dynamic>))
             .toList();
+
+        // testId'yi widget'tan al veya testData'dan çek
+        final testId = widget.testId ?? widget.testData!['testID'] as String?;
+
         ref
             .read(testControllerProvider.notifier)
-            .initializeTest(questionModels);
+            .initializeTest(questionModels, testId: testId);
       }
     });
   }

@@ -81,8 +81,11 @@ class _ProfileTabState extends ConsumerState<ProfileTab>
       final db = await dbHelper.database;
       final testResults = await db.query('TestResults');
 
-      // Oyun sonuçlarını al
+      // Oyun sonuçlarını al (flashcard ve diğer oyunlar dahil)
       final gameResults = await dbHelper.getAllGameResults();
+
+      // Haftalık sınav sonuçlarını al
+      final weeklyResults = await db.query('WeeklyExamResults');
 
       int totalCorrect = 0;
       int totalWrong = 0;
@@ -93,10 +96,16 @@ class _ProfileTabState extends ConsumerState<ProfileTab>
         totalWrong += (result['wrong'] as int?) ?? 0;
       }
 
-      // Oyun sonuçlarını hesapla
+      // Oyun sonuçlarını hesapla (flashcard dahil)
       for (final result in gameResults) {
         totalCorrect += (result['correctCount'] as int?) ?? 0;
         totalWrong += (result['wrongCount'] as int?) ?? 0;
+      }
+
+      // Haftalık sınav sonuçlarını hesapla
+      for (final result in weeklyResults) {
+        totalCorrect += (result['dogru'] as int?) ?? 0;
+        totalWrong += (result['yanlis'] as int?) ?? 0;
       }
 
       // Streak hesapla (basit: ardışık günler)

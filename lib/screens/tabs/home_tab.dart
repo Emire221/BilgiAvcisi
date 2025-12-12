@@ -55,10 +55,36 @@ class _HomeTabState extends ConsumerState<HomeTab>
   }
 
   Future<void> _loadDailyFact() async {
-    final fact = await DailyFactService.getRandomFact();
-    if (fact != null && mounted) {
-      setState(() => _dailyFact = fact);
-      _startTypingAnimation(fact.fact);
+    try {
+      final fact = await DailyFactService.getRandomFact();
+      if (mounted) {
+        if (fact != null) {
+          setState(() => _dailyFact = fact);
+          _startTypingAnimation(fact.fact);
+        } else {
+          // Fallback: JSON yüklenemezse varsayılan bilgi göster
+          const fallbackFact = DailyFact(
+            dayOfYear: 1,
+            title: 'İlginç Bilgi',
+            fact:
+                'Dünya, Güneş etrafındaki turunu tam 365 gün 6 saatte tamamlar!',
+          );
+          setState(() => _dailyFact = fallbackFact);
+          _startTypingAnimation(fallbackFact.fact);
+        }
+      }
+    } catch (e) {
+      // Hata durumunda da fallback göster
+      if (mounted) {
+        const fallbackFact = DailyFact(
+          dayOfYear: 1,
+          title: 'İlginç Bilgi',
+          fact:
+              'Dünya, Güneş etrafındaki turunu tam 365 gün 6 saatte tamamlar!',
+        );
+        setState(() => _dailyFact = fallbackFact);
+        _startTypingAnimation(fallbackFact.fact);
+      }
     }
   }
 

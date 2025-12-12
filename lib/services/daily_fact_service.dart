@@ -29,7 +29,9 @@ class DailyFactService {
 
   /// JSON'dan tüm faktleri yükle
   static Future<List<DailyFact>> _loadFacts() async {
-    if (_cachedFacts != null) return _cachedFacts!;
+    if (_cachedFacts != null && _cachedFacts!.isNotEmpty) {
+      return _cachedFacts!;
+    }
 
     try {
       final String jsonString = await rootBundle.loadString(
@@ -43,8 +45,16 @@ class DailyFactService {
 
       return _cachedFacts!;
     } catch (e) {
-      // Hata durumunda boş liste döndür
-      return [];
+      // Hata durumunda varsayılan bir fact döndür
+      // Hata durumunda varsayılan fact döndür
+      return [
+        const DailyFact(
+          dayOfYear: 1,
+          title: 'İlginç Bilgi',
+          fact:
+              'Dünya, Güneş etrafındaki turunu tam 365 gün 6 saatte tamamlar. Bu 6 saatlik farklar birikerek 4 yılda bir "Artık Yıl"ı (29 Şubat) oluşturur.',
+        ),
+      ];
     }
   }
 
