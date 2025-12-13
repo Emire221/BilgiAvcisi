@@ -1,6 +1,5 @@
 ﻿import 'dart:convert';
 import 'dart:math' as math;
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -1193,170 +1192,40 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen>
 
   void _showCityPicker(BuildContext context) {
     _triggerHaptic();
-    showCupertinoModalPopup(
+    showModalBottomSheet(
       context: context,
-      builder: (_) => Container(
-        height: 300,
-        decoration: BoxDecoration(
-          color: _primaryPurple,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.1),
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(20),
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: Text(
-                      'İptal',
-                      style: GoogleFonts.poppins(color: Colors.white70),
-                    ),
-                  ),
-                  Text(
-                    'İl Seçiniz',
-                    style: GoogleFonts.poppins(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: Text(
-                      'Tamam',
-                      style: GoogleFonts.poppins(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: CupertinoPicker(
-                backgroundColor: _primaryPurple,
-                itemExtent: 40,
-                scrollController: FixedExtentScrollController(
-                  initialItem: _selectedCity != null
-                      ? _cities.indexOf(_selectedCity!)
-                      : 0,
-                ),
-                onSelectedItemChanged: (i) {
-                  _triggerHaptic();
-                  _onCityChanged(_cities[i]);
-                },
-                children: _cities
-                    .map(
-                      (c) => Center(
-                        child: Text(
-                          c,
-                          style: GoogleFonts.poppins(
-                            color: Colors.white,
-                            fontSize: 18,
-                          ),
-                        ),
-                      ),
-                    )
-                    .toList(),
-              ),
-            ),
-          ],
-        ),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _SearchablePickerSheet<String>(
+        title: '📍 İl Seçiniz',
+        items: _cities,
+        itemBuilder: (city) => city,
+        searchMatcher: (city, query) =>
+            city.toLowerCase().contains(query.toLowerCase()),
+        onSelected: (city) {
+          Navigator.pop(context);
+          _onCityChanged(city);
+        },
       ),
     );
   }
 
   void _showDistrictPicker() {
     _triggerHaptic();
-    showCupertinoModalPopup(
+    showModalBottomSheet(
       context: context,
-      builder: (_) => Container(
-        height: 300,
-        decoration: BoxDecoration(
-          color: _turquoise,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.1),
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(20),
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: Text(
-                      'İptal',
-                      style: GoogleFonts.poppins(color: Colors.white70),
-                    ),
-                  ),
-                  Text(
-                    'İlçe Seçiniz',
-                    style: GoogleFonts.poppins(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: Text(
-                      'Tamam',
-                      style: GoogleFonts.poppins(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: CupertinoPicker(
-                backgroundColor: _turquoise,
-                itemExtent: 40,
-                scrollController: FixedExtentScrollController(
-                  initialItem: _selectedDistrict != null
-                      ? _districts.indexOf(_selectedDistrict!)
-                      : 0,
-                ),
-                onSelectedItemChanged: (i) {
-                  _triggerHaptic();
-                  _onDistrictChanged(_districts[i]);
-                },
-                children: _districts
-                    .map(
-                      (d) => Center(
-                        child: Text(
-                          d,
-                          style: GoogleFonts.poppins(
-                            color: Colors.white,
-                            fontSize: 18,
-                          ),
-                        ),
-                      ),
-                    )
-                    .toList(),
-              ),
-            ),
-          ],
-        ),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _SearchablePickerSheet<String>(
+        title: '🏘️ İlçe Seçiniz',
+        items: _districts,
+        itemBuilder: (district) => district,
+        searchMatcher: (district, query) =>
+            district.toLowerCase().contains(query.toLowerCase()),
+        onSelected: (district) {
+          Navigator.pop(context);
+          _onDistrictChanged(district);
+        },
       ),
     );
   }
