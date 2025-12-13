@@ -11,6 +11,8 @@ import '../core/navigator_key.dart';
 import '../core/providers/sync_provider.dart';
 import '../features/sync/domain/models/manifest_model.dart';
 import '../services/notification_service.dart';
+import '../services/local_preferences_service.dart';
+import '../services/database_helper.dart';
 import '../widgets/in_app_notification.dart';
 import 'main_screen.dart';
 
@@ -176,6 +178,20 @@ class _ContentLoadingScreenState extends ConsumerState<ContentLoadingScreen>
   }
 
   Future<void> _startContentSync() async {
+    // 🚩 Preferences servisi
+    final prefsService = LocalPreferencesService();
+
+    // 🧹 Önceki sync yarım kalmışsa bozuk verileri temizle
+    final wasPreviousSyncComplete = await prefsService.isContentSyncCompleted();
+    if (!wasPreviousSyncComplete) {
+      // Önceki indirme yarıda kalmış - bozuk/eksik verileri temizle
+      debugPrint('⚠️ Önceki sync yarım kalmış - veriler temizleniyor...');
+      await DatabaseHelper().clearAllData();
+    }
+
+    // 🚩 Bayrağı FALSE yap - yeni işlem başlıyor
+    await prefsService.setContentSyncCompleted(false);
+
     try {
       // Kullanıcının sınıf bilgisini al
       final user = FirebaseAuth.instance.currentUser;
@@ -220,12 +236,16 @@ class _ContentLoadingScreenState extends ConsumerState<ContentLoadingScreen>
         throw Exception(syncState.error);
       }
 
+      // ✅ Başarılı - Bayrağı TRUE yap
+      await prefsService.setContentSyncCompleted(true);
+
       // Başarılı - MainScreen'e git
       if (mounted) {
         await Future.delayed(const Duration(milliseconds: 500));
         _navigateToMain();
       }
     } catch (e) {
+      // ❌ Hata durumunda bayrak FALSE kalır (zaten false yapılmıştı)
       if (mounted) {
         setState(() {
           _hasError = true;

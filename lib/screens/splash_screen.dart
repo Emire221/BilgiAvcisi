@@ -1,8 +1,14 @@
 import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:lottie/lottie.dart';
+import '../services/local_preferences_service.dart';
+import 'content_loading_screen.dart';
 import 'login_screen.dart';
+import 'main_screen.dart';
+import 'profile_setup_screen.dart';
 
 /// Professional & Lightweight Splash Screen
 class SplashScreen extends StatefulWidget {
@@ -24,24 +30,65 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   void _startSplashSequence() async {
-    // Duration of the splash screen
+    // Splash animasyonu için bekle
     await Future.delayed(const Duration(seconds: 4));
     if (!mounted) return;
-    _navigateToLogin();
+
+    // Kullanıcı durumunu kontrol et ve yönlendir
+    await _checkAuthAndNavigate();
   }
 
-  void _navigateToLogin() {
-    Navigator.of(context).pushReplacement(_createFadeTransition());
+  /// Kullanıcı durumunu kontrol eder ve uygun ekrana yönlendirir
+  Future<void> _checkAuthAndNavigate() async {
+    final user = FirebaseAuth.instance.currentUser;
+
+    // 📌 DURUM 1: Kullanıcı giriş yapmamış
+    if (user == null) {
+      _navigateToScreen(const LoginScreen());
+      return;
+    }
+
+    // 📌 DURUM 2: Kullanıcı giriş yapmış - profil kontrolü
+    try {
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+
+      // Profil yoksa → ProfileSetupScreen
+      if (!userDoc.exists) {
+        _navigateToScreen(const ProfileSetupScreen());
+        return;
+      }
+
+      // 📌 DURUM 3: Profil var - içerik senkronizasyon kontrolü
+      final prefsService = LocalPreferencesService();
+      final isContentSynced = await prefsService.isContentSyncCompleted();
+
+      if (isContentSynced) {
+        // ✅ İçerik başarıyla indirilmiş → MainScreen
+        _navigateToScreen(const MainScreen());
+      } else {
+        // ❌ İçerik indirilmemiş veya yarım kalmış → ContentLoadingScreen
+        _navigateToScreen(const ContentLoadingScreen());
+      }
+    } catch (e) {
+      // Hata durumunda güvenli tarafta kal - ContentLoadingScreen
+      debugPrint('Auth kontrol hatası: $e');
+      _navigateToScreen(const ContentLoadingScreen());
+    }
   }
 
-  PageRouteBuilder<dynamic> _createFadeTransition() {
-    return PageRouteBuilder(
-      pageBuilder: (context, animation, secondaryAnimation) =>
-          const LoginScreen(),
-      transitionDuration: const Duration(milliseconds: 800),
-      transitionsBuilder: (context, animation, secondaryAnimation, child) {
-        return FadeTransition(opacity: animation, child: child);
-      },
+  /// Belirtilen ekrana fade geçişi ile yönlendirir
+  void _navigateToScreen(Widget screen) {
+    Navigator.of(context).pushReplacement(
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) => screen,
+        transitionDuration: const Duration(milliseconds: 800),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+      ),
     );
   }
 

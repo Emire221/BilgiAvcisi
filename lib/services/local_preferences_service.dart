@@ -11,6 +11,20 @@ class LocalPreferencesService {
   static const String _keyIsFirstRun = 'isFirstRun';
   static const String _keyLastSyncVersion = 'lastSyncVersion';
   static const String _keyLastSyncDate = 'lastSyncDate';
+  static const String _keyContentSyncCompleted = 'contentSyncCompleted';
+
+  /// İçerik senkronizasyonunun başarıyla tamamlanıp tamamlanmadığını kaydeder
+  Future<void> setContentSyncCompleted(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyContentSyncCompleted, value);
+  }
+
+  /// İçerik senkronizasyonunun tamamlanıp tamamlanmadığını kontrol eder
+  /// Varsayılan: false (güvenli taraf - senkronizasyon yapılmadı varsayılır)
+  Future<bool> isContentSyncCompleted() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_keyContentSyncCompleted) ?? false;
+  }
 
   /// Kullanıcı profilini yerel önbelleğe kaydeder
   Future<void> saveUserProfile({
