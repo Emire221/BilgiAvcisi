@@ -439,13 +439,33 @@ class _TestScreenState extends ConsumerState<TestScreen>
       _isAnswering = true;
     });
 
-    // Kısa bir gecikme ile cevabı gönder
+    // Kısa bir gecikme ile seçimi göster
     await Future.delayed(const Duration(milliseconds: 400));
 
-    controller.answerQuestion(answer);
+    // Cevabı değerlendir ve sonuç bilgisini al
+    final result = controller.answerQuestion(answer);
 
-    // Bir sonraki soru için state'i sıfırla
+    if (!mounted) return;
+
+    // 🎯 POPUP DIALOG GÖSTER
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: true, // Kullanıcı isteğine göre kapatılabilir
+      barrierColor: Colors.black87,
+      builder: (dialogContext) => _AnswerResultDialog(
+        isCorrect: result.isCorrect,
+        correctAnswer: result.correctAnswer,
+        aciklama: result.aciklama,
+        onContinue: () {
+          Navigator.of(dialogContext).pop();
+        },
+      ),
+    );
+
+    // Popup kapandıktan sonra sonraki soruya geç
     if (mounted) {
+      await controller.proceedToNextOrFinish();
+
       setState(() {
         _selectedOptionIndex = null;
         _isAnswering = false;
@@ -1027,6 +1047,408 @@ class _GameOptionButtonState extends State<_GameOptionButton>
             );
           },
         ),
+      ),
+    );
+  }
+}
+
+// ============================================================================
+// ANSWER RESULT DIALOG - Animasyonlu Cevap Sonucu Popup'ı
+// ============================================================================
+
+/// 🎯 Cevap Sonrası Açıklamalı Popup Dialog
+/// Doğru/Yanlış bilgisi, açıklama ve sonraki soruya geçiş butonu içerir.
+class _AnswerResultDialog extends StatefulWidget {
+  final bool isCorrect;
+  final String correctAnswer;
+  final String? aciklama;
+  final VoidCallback onContinue;
+
+  const _AnswerResultDialog({
+    required this.isCorrect,
+    required this.correctAnswer,
+    this.aciklama,
+    required this.onContinue,
+  });
+
+  @override
+  State<_AnswerResultDialog> createState() => _AnswerResultDialogState();
+}
+
+class _AnswerResultDialogState extends State<_AnswerResultDialog>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _fadeAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+    );
+
+    _scaleAnimation = Tween<double>(
+      begin: 0.8,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.elasticOut));
+
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
+
+    _controller.forward();
+
+    // Haptic feedback
+    if (widget.isCorrect) {
+      HapticFeedback.lightImpact();
+    } else {
+      HapticFeedback.heavyImpact();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isCorrect = widget.isCorrect;
+    final primaryColor = isCorrect ? Colors.greenAccent : Colors.redAccent;
+    final gradientColors = isCorrect
+        ? [const Color(0xFF00C853), const Color(0xFF00E676)]
+        : [const Color(0xFFFF1744), const Color(0xFFFF5252)];
+
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return FadeTransition(
+          opacity: _fadeAnimation,
+          child: ScaleTransition(
+            scale: _scaleAnimation,
+            child: Dialog(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Container(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.7,
+                  maxWidth: 400,
+                ),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(28),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [const Color(0xFF1a1a2e), const Color(0xFF16213e)],
+                  ),
+                  border: Border.all(
+                    color: primaryColor.withValues(alpha: 0.6),
+                    width: 2.5,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: primaryColor.withValues(alpha: 0.4),
+                      blurRadius: 30,
+                      spreadRadius: 5,
+                    ),
+                    BoxShadow(
+                      color: primaryColor.withValues(alpha: 0.2),
+                      blurRadius: 60,
+                      spreadRadius: 10,
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(26),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // ═══ HEADER - Sonuç Bildirimi ═══
+                        _buildHeader(isCorrect, primaryColor, gradientColors),
+
+                        // ═══ CONTENT ═══
+                        Flexible(
+                          child: SingleChildScrollView(
+                            physics: const BouncingScrollPhysics(),
+                            padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Yanlış cevap ise doğru cevabı göster
+                                if (!isCorrect) ...[
+                                  _buildCorrectAnswerSection(),
+                                  const SizedBox(height: 20),
+                                ],
+
+                                // Açıklama
+                                if (widget.aciklama != null &&
+                                    widget.aciklama!.isNotEmpty)
+                                  _buildExplanationSection(primaryColor),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                        // ═══ FOOTER - Devam Butonu ═══
+                        _buildContinueButton(gradientColors, primaryColor),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// Header - Doğru/Yanlış sonuç bildirimi
+  Widget _buildHeader(
+    bool isCorrect,
+    Color primaryColor,
+    List<Color> gradientColors,
+  ) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 28),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            gradientColors[0].withValues(alpha: 0.25),
+            gradientColors[1].withValues(alpha: 0.15),
+          ],
+        ),
+      ),
+      child: Column(
+        children: [
+          // İkon
+          Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(colors: gradientColors),
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: primaryColor.withValues(alpha: 0.6),
+                      blurRadius: 20,
+                      spreadRadius: 4,
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: FaIcon(
+                    isCorrect ? FontAwesomeIcons.check : FontAwesomeIcons.xmark,
+                    color: Colors.white,
+                    size: 40,
+                  ),
+                ),
+              )
+              .animate(onPlay: (c) => c.forward())
+              .scale(
+                begin: const Offset(0, 0),
+                end: const Offset(1, 1),
+                duration: 500.ms,
+                curve: Curves.elasticOut,
+              ),
+
+          const SizedBox(height: 16),
+
+          // Başlık
+          Text(
+            isCorrect ? 'Doğru Cevap!' : 'Yanlış Cevap',
+            style: TextStyle(
+              color: primaryColor,
+              fontSize: 26,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1.5,
+            ),
+          ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.3, end: 0),
+
+          if (isCorrect) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Harika! Devam et! 🎉',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.8),
+                fontSize: 14,
+              ),
+            ).animate().fadeIn(delay: 300.ms),
+          ],
+        ],
+      ),
+    );
+  }
+
+  /// Doğru cevap gösterimi (yanlış cevap durumunda)
+  Widget _buildCorrectAnswerSection() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        color: Colors.greenAccent.withValues(alpha: 0.1),
+        border: Border.all(
+          color: Colors.greenAccent.withValues(alpha: 0.4),
+          width: 1.5,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF00C853), Color(0xFF00E676)],
+              ),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Center(
+              child: FaIcon(
+                FontAwesomeIcons.lightbulb,
+                color: Colors.white,
+                size: 20,
+              ),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Doğru Cevap',
+                  style: TextStyle(
+                    color: Colors.greenAccent.withValues(alpha: 0.9),
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  widget.correctAnswer,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    ).animate().fadeIn(delay: 200.ms).slideX(begin: -0.1, end: 0);
+  }
+
+  /// Açıklama bölümü
+  Widget _buildExplanationSection(Color primaryColor) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            FaIcon(
+              FontAwesomeIcons.circleInfo,
+              color: primaryColor.withValues(alpha: 0.8),
+              size: 16,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              'Açıklama',
+              style: TextStyle(
+                color: primaryColor.withValues(alpha: 0.9),
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            color: Colors.white.withValues(alpha: 0.05),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.1),
+              width: 1,
+            ),
+          ),
+          child: Text(
+            widget.aciklama!,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 15,
+              height: 1.6,
+              letterSpacing: 0.3,
+            ),
+          ),
+        ),
+      ],
+    ).animate().fadeIn(delay: 350.ms).slideY(begin: 0.2, end: 0);
+  }
+
+  /// Devam butonu
+  Widget _buildContinueButton(List<Color> gradientColors, Color primaryColor) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+      child: SizedBox(
+        width: double.infinity,
+        child: GestureDetector(
+          onTap: () {
+            HapticFeedback.mediumImpact();
+            widget.onContinue();
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 18),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(colors: gradientColors),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: primaryColor.withValues(alpha: 0.5),
+                  blurRadius: 15,
+                  spreadRadius: 2,
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text(
+                  'Sıradaki Soruya Geç',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const FaIcon(
+                  FontAwesomeIcons.arrowRight,
+                  color: Colors.white,
+                  size: 18,
+                ),
+              ],
+            ),
+          ),
+        ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.3, end: 0),
       ),
     );
   }

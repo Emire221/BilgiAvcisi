@@ -17,6 +17,7 @@ _$QuestionModelImpl _$$QuestionModelImplFromJson(Map<String, dynamic> json) =>
       dogruCevap: json['dogruCevap'] as String,
       cozumMetni: json['cozumMetni'] as String?,
       resimURL: json['resimURL'] as String?,
+      aciklama: json['aciklama'] as String?,
     );
 
 Map<String, dynamic> _$$QuestionModelImplToJson(_$QuestionModelImpl instance) =>
@@ -26,4 +27,5 @@ Map<String, dynamic> _$$QuestionModelImplToJson(_$QuestionModelImpl instance) =>
       'dogruCevap': instance.dogruCevap,
       'cozumMetni': instance.cozumMetni,
       'resimURL': instance.resimURL,
+      'aciklama': instance.aciklama,
     };

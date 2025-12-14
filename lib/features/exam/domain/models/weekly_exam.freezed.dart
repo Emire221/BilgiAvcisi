@@ -15,13 +15,9 @@ final _privateConstructorUsedError = UnsupportedError(
   'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models',
 );
 
-WeeklyExam _$WeeklyExamFromJson(Map<String, dynamic> json) {
-  return _WeeklyExam.fromJson(json);
-}
-
 /// @nodoc
 mixin _$WeeklyExam {
-  @JsonKey(name: 'weeklyExamId')
+  /// JSON'da weeklyExamId olarak gelir
   String get examId => throw _privateConstructorUsedError;
   String get title => throw _privateConstructorUsedError;
   String get weekStart =>
@@ -29,9 +25,6 @@ mixin _$WeeklyExam {
   int get duration => throw _privateConstructorUsedError; // Dakika cinsinden
   List<WeeklyExamQuestion> get questions => throw _privateConstructorUsedError;
   String? get description => throw _privateConstructorUsedError;
-
-  /// Serializes this WeeklyExam to a JSON map.
-  Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
 
   /// Create a copy of WeeklyExam
   /// with the given fields replaced by the non-null parameter values.
@@ -48,7 +41,7 @@ abstract class $WeeklyExamCopyWith<$Res> {
   ) = _$WeeklyExamCopyWithImpl<$Res, WeeklyExam>;
   @useResult
   $Res call({
-    @JsonKey(name: 'weeklyExamId') String examId,
+    String examId,
     String title,
     String weekStart,
     int duration,
@@ -121,7 +114,7 @@ abstract class _$$WeeklyExamImplCopyWith<$Res>
   @override
   @useResult
   $Res call({
-    @JsonKey(name: 'weeklyExamId') String examId,
+    String examId,
     String title,
     String weekStart,
     int duration,
@@ -183,10 +176,10 @@ class __$$WeeklyExamImplCopyWithImpl<$Res>
 }
 
 /// @nodoc
-@JsonSerializable()
+
 class _$WeeklyExamImpl implements _WeeklyExam {
   const _$WeeklyExamImpl({
-    @JsonKey(name: 'weeklyExamId') required this.examId,
+    required this.examId,
     required this.title,
     required this.weekStart,
     required this.duration,
@@ -194,11 +187,8 @@ class _$WeeklyExamImpl implements _WeeklyExam {
     this.description,
   }) : _questions = questions;
 
-  factory _$WeeklyExamImpl.fromJson(Map<String, dynamic> json) =>
-      _$$WeeklyExamImplFromJson(json);
-
+  /// JSON'da weeklyExamId olarak gelir
   @override
-  @JsonKey(name: 'weeklyExamId')
   final String examId;
   @override
   final String title;
@@ -244,7 +234,6 @@ class _$WeeklyExamImpl implements _WeeklyExam {
                 other.description == description));
   }
 
-  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode => Object.hash(
     runtimeType,
@@ -263,16 +252,11 @@ class _$WeeklyExamImpl implements _WeeklyExam {
   @pragma('vm:prefer-inline')
   _$$WeeklyExamImplCopyWith<_$WeeklyExamImpl> get copyWith =>
       __$$WeeklyExamImplCopyWithImpl<_$WeeklyExamImpl>(this, _$identity);
-
-  @override
-  Map<String, dynamic> toJson() {
-    return _$$WeeklyExamImplToJson(this);
-  }
 }
 
 abstract class _WeeklyExam implements WeeklyExam {
   const factory _WeeklyExam({
-    @JsonKey(name: 'weeklyExamId') required final String examId,
+    required final String examId,
     required final String title,
     required final String weekStart,
     required final int duration,
@@ -280,11 +264,8 @@ abstract class _WeeklyExam implements WeeklyExam {
     final String? description,
   }) = _$WeeklyExamImpl;
 
-  factory _WeeklyExam.fromJson(Map<String, dynamic> json) =
-      _$WeeklyExamImpl.fromJson;
-
+  /// JSON'da weeklyExamId olarak gelir
   @override
-  @JsonKey(name: 'weeklyExamId')
   String get examId;
   @override
   String get title;
@@ -662,7 +643,7 @@ mixin _$WeeklyExamResult {
   String get odaBaslangic => throw _privateConstructorUsedError; // ISO 8601
   String get odaBitis =>
       throw _privateConstructorUsedError; // ISO 8601 (Çarşamba 23:59)
-  String get sonucTarihi => throw _privateConstructorUsedError; // Pazar 20:00
+  String get sonucTarihi => throw _privateConstructorUsedError; // Pazar 12:00
   String get odaDurumu =>
       throw _privateConstructorUsedError; // "aktif", "kapali", "sonuclanmis"
   String get kullaniciId => throw _privateConstructorUsedError;
@@ -1004,7 +985,7 @@ class _$WeeklyExamResultImpl implements _WeeklyExamResult {
   // ISO 8601 (Çarşamba 23:59)
   @override
   final String sonucTarihi;
-  // Pazar 20:00
+  // Pazar 12:00
   @override
   final String odaDurumu;
   // "aktif", "kapali", "sonuclanmis"
@@ -1149,7 +1130,7 @@ abstract class _WeeklyExamResult implements WeeklyExamResult {
   @override
   String get odaBitis; // ISO 8601 (Çarşamba 23:59)
   @override
-  String get sonucTarihi; // Pazar 20:00
+  String get sonucTarihi; // Pazar 12:00
   @override
   String get odaDurumu; // "aktif", "kapali", "sonuclanmis"
   @override

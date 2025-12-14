@@ -6,28 +6,6 @@ part of 'weekly_exam.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_$WeeklyExamImpl _$$WeeklyExamImplFromJson(Map<String, dynamic> json) =>
-    _$WeeklyExamImpl(
-      examId: json['weeklyExamId'] as String,
-      title: json['title'] as String,
-      weekStart: json['weekStart'] as String,
-      duration: (json['duration'] as num).toInt(),
-      questions: (json['questions'] as List<dynamic>)
-          .map((e) => WeeklyExamQuestion.fromJson(e as Map<String, dynamic>))
-          .toList(),
-      description: json['description'] as String?,
-    );
-
-Map<String, dynamic> _$$WeeklyExamImplToJson(_$WeeklyExamImpl instance) =>
-    <String, dynamic>{
-      'weeklyExamId': instance.examId,
-      'title': instance.title,
-      'weekStart': instance.weekStart,
-      'duration': instance.duration,
-      'questions': instance.questions,
-      'description': instance.description,
-    };
-
 _$WeeklyExamQuestionImpl _$$WeeklyExamQuestionImplFromJson(
   Map<String, dynamic> json,
 ) => _$WeeklyExamQuestionImpl(

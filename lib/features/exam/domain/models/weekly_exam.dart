@@ -16,13 +16,21 @@ class WeeklyExam with _$WeeklyExam {
     String? description,
   }) = _WeeklyExam;
 
+  /// Özel fromJson - weeklyExamId -> examId dönüşümü yapar
   factory WeeklyExam.fromJson(Map<String, dynamic> json) {
     // weeklyExamId -> examId dönüşümü
-    final data = Map<String, dynamic>.from(json);
-    if (data.containsKey('weeklyExamId') && !data.containsKey('examId')) {
-      data['examId'] = data['weeklyExamId'];
-    }
-    return _$WeeklyExamFromJson(data);
+    final examId = json['examId'] as String? ?? json['weeklyExamId'] as String;
+
+    return _$WeeklyExamImpl(
+      examId: examId,
+      title: json['title'] as String,
+      weekStart: json['weekStart'] as String,
+      duration: json['duration'] as int,
+      questions: (json['questions'] as List<dynamic>)
+          .map((e) => WeeklyExamQuestion.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      description: json['description'] as String?,
+    );
   }
 }
 

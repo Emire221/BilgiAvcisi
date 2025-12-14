@@ -11,6 +11,7 @@ class QuestionModel with _$QuestionModel {
     required String dogruCevap,
     String? cozumMetni,
     String? resimURL,
+    String? aciklama, // ✨ Cevap sonrası gösterilecek açıklama metni
   }) = _QuestionModel;
 
   factory QuestionModel.fromJson(Map<String, dynamic> json) =>

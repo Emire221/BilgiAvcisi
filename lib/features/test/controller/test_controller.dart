@@ -70,11 +70,17 @@ class TestController extends StateNotifier<TestState> {
     }
   }
 
-  /// Soruyu cevapla
-  Future<void> answerQuestion(String selectedAnswer) async {
+  /// Soruyu cevapla - sonuç bilgisi döndürür (popup için)
+  /// Artık otomatik sonraki soruya geçmiyor, UI popup'tan geçişi tetikleyecek
+  ({bool isCorrect, String correctAnswer, String? aciklama}) answerQuestion(
+    String selectedAnswer,
+  ) {
     if (state.currentQuestion == null || state.status != TestStatus.active) {
-      return;
+      return (isCorrect: false, correctAnswer: '', aciklama: null);
     }
+
+    // Timer'ı duraklat - popup açıkken süre işlemesin
+    _timer?.cancel();
 
     final currentQuestion = state.currentQuestion!;
     final correctAnswer = currentQuestion.dogruCevap;
@@ -99,15 +105,19 @@ class TestController extends StateNotifier<TestState> {
       score: newScore,
     );
 
-    // ÖNEMLİ: State güncellemesinin tam olarak uygulanmasını garanti et
-    // Bu, özellikle son soru için kritik (race condition önleme)
-    await Future.microtask(() {});
+    // Popup için sonuç bilgisini döndür
+    return (
+      isCorrect: isCorrect,
+      correctAnswer: correctAnswer,
+      aciklama: currentQuestion.aciklama,
+    );
+  }
 
-    // Sonraki soruya geç veya bitir
+  /// Popup kapandıktan sonra sonraki soruya geç veya testi bitir
+  Future<void> proceedToNextOrFinish() async {
     if (state.currentQuestionIndex < state.questions.length - 1) {
       nextQuestion();
     } else {
-      // Son sorudayız, state güncellemesi tamamlandı, şimdi testi bitir
       await finishTest();
     }
   }

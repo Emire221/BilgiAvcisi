@@ -1,0 +1,129 @@
+{
+    "testID": "TEST_TR_3_12_1",
+    "konuID": "TR_3_12",
+    "testAdi": "Eylem - Kolay Seviye Test 1",
+    "zorluk": 1,
+    "cozumVideoURL": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    "sorular": [
+        {
+            "soruID": "S1",
+            "soruMetni": "Aşağıdaki cümlelerden hangisinde eylem (fiil) kullanılmıştır?",
+            "secenekler": [
+                "Güzel bir gün.",
+                "O çok yorgun.",
+                "Çocuk koşuyor.",
+                "Büyük bir ev."
+            ],
+            "dogruCevap": "Çocuk koşuyor.",
+            "aciklama": "Eylem (fiil), bir iş, oluş veya hareket bildiren sözcüklerdir. 'Koşuyor' kelimesi bir hareket bildirdiği için eylemdir. Diğer cümlelerde isim ve sıfatlar kullanılmıştır."
+        },
+        {
+            "soruID": "S2",
+            "soruMetni": "Hangi kelime bir eylemdir?",
+            "secenekler": [
+                "Kitap",
+                "Okuyor",
+                "Güzel",
+                "Hızlı"
+            ],
+            "dogruCevap": "Okuyor",
+            "aciklama": "'Okuyor' kelimesi bir iş/eylem bildirmektedir. 'Kitap' isim, 'güzel' ve 'hızlı' ise sıfattır."
+        },
+        {
+            "soruID": "S3",
+            "soruMetni": "'Kuşlar gökyüzünde uçuyor.' cümlesindeki eylem hangisidir?",
+            "secenekler": [
+                "Kuşlar",
+                "Gökyüzünde",
+                "Uçuyor",
+                "Bu cümlede eylem yok"
+            ],
+            "dogruCevap": "Uçuyor",
+            "aciklama": "'Uçuyor' kelimesi kuşların yaptığı hareketi bildirmektedir, bu nedenle eylemdir. 'Kuşlar' özne, 'gökyüzünde' ise belirteçtir."
+        },
+        {
+            "soruID": "S4",
+            "soruMetni": "Aşağıdakilerden hangisi eylem bildiren bir cümledir?",
+            "secenekler": [
+                "Bugün hava çok sıcak.",
+                "Annem yemek pişiriyor.",
+                "Yeşil yapraklar.",
+                "Küçük kedi."
+            ],
+            "dogruCevap": "Annem yemek pişiriyor.",
+            "aciklama": "'Pişiriyor' bir iş bildiren eylemdir. Diğer seçeneklerde eylem bulunmamaktadır, sadece isim ve sıfatlar vardır."
+        },
+        {
+            "soruID": "S5",
+            "soruMetni": "'Çiçekler bahçede açmış.' cümlesinde eylem hangi kelimedir?",
+            "secenekler": [
+                "Çiçekler",
+                "Bahçede",
+                "Açmış",
+                "Hiçbiri"
+            ],
+            "dogruCevap": "Açmış",
+            "aciklama": "'Açmış' kelimesi çiçeklerin yaptığı bir oluşu bildirmektedir. Bu nedenle eylemdir. '-mış' eki geçmiş zaman bildiren bir fiil ekidir."
+        },
+        {
+            "soruID": "S6",
+            "soruMetni": "Hangisi bir eylem DEĞİLDİR?",
+            "secenekler": [
+                "Yürüyor",
+                "Ağlıyor",
+                "Masa",
+                "Gülüyor"
+            ],
+            "dogruCevap": "Masa",
+            "aciklama": "'Masa' bir varlık adıdır (isim). Yürüyor, ağlıyor ve gülüyor kelimeleri ise hareket/duygu bildiren eylemlerdir."
+        },
+        {
+            "soruID": "S7",
+            "soruMetni": "'Babam gazete okuyor.' cümlesindeki yüklem (eylem) nedir?",
+            "secenekler": [
+                "Babam",
+                "Gazete",
+                "Okuyor",
+                "Babam gazete"
+            ],
+            "dogruCevap": "Okuyor",
+            "aciklama": "Yüklem, cümlenin temel öğesidir ve genellikle eylem ile kurulur. 'Okuyor' babanın yaptığı işi bildiren eylemdir."
+        },
+        {
+            "soruID": "S8",
+            "soruMetni": "Aşağıdaki cümlelerin hangisinde eylem geçmiş zamanlıdır?",
+            "secenekler": [
+                "Ali koşuyor.",
+                "Ali koşacak.",
+                "Ali koştu.",
+                "Ali koşar."
+            ],
+            "dogruCevap": "Ali koştu.",
+            "aciklama": "'Koştu' kelimesindeki '-du' eki geçmiş zaman ekidir. 'Koşuyor' şimdiki zaman, 'koşacak' gelecek zaman, 'koşar' geniş zamandır."
+        },
+        {
+            "soruID": "S9",
+            "soruMetni": "'Kardeşim resim çiziyor.' cümlesinde kaç tane eylem vardır?",
+            "secenekler": [
+                "0",
+                "1",
+                "2",
+                "3"
+            ],
+            "dogruCevap": "1",
+            "aciklama": "Bu cümlede sadece 'çiziyor' kelimesi eylemdir. 'Kardeşim' isim, 'resim' ise nesnedir."
+        },
+        {
+            "soruID": "S10",
+            "soruMetni": "Hangisi eylem kök halinde verilmiştir?",
+            "secenekler": [
+                "Gel",
+                "Geldi",
+                "Geliyor",
+                "Gelecek"
+            ],
+            "dogruCevap": "Gel",
+            "aciklama": "Eylem kökü, eylemin hiçbir ek almamış halidir. 'Gel' eylem köküdür. Diğerleri zaman eki almış çekimli eylemlerdir."
+        }
+    ]
+}

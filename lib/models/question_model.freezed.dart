@@ -26,6 +26,7 @@ mixin _$QuestionModel {
   String get dogruCevap => throw _privateConstructorUsedError;
   String? get cozumMetni => throw _privateConstructorUsedError;
   String? get resimURL => throw _privateConstructorUsedError;
+  String? get aciklama => throw _privateConstructorUsedError;
 
   /// Serializes this QuestionModel to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -50,6 +51,7 @@ abstract class $QuestionModelCopyWith<$Res> {
     String dogruCevap,
     String? cozumMetni,
     String? resimURL,
+    String? aciklama,
   });
 }
 
@@ -73,6 +75,7 @@ class _$QuestionModelCopyWithImpl<$Res, $Val extends QuestionModel>
     Object? dogruCevap = null,
     Object? cozumMetni = freezed,
     Object? resimURL = freezed,
+    Object? aciklama = freezed,
   }) {
     return _then(
       _value.copyWith(
@@ -96,6 +99,10 @@ class _$QuestionModelCopyWithImpl<$Res, $Val extends QuestionModel>
                 ? _value.resimURL
                 : resimURL // ignore: cast_nullable_to_non_nullable
                       as String?,
+            aciklama: freezed == aciklama
+                ? _value.aciklama
+                : aciklama // ignore: cast_nullable_to_non_nullable
+                      as String?,
           )
           as $Val,
     );
@@ -117,6 +124,7 @@ abstract class _$$QuestionModelImplCopyWith<$Res>
     String dogruCevap,
     String? cozumMetni,
     String? resimURL,
+    String? aciklama,
   });
 }
 
@@ -139,6 +147,7 @@ class __$$QuestionModelImplCopyWithImpl<$Res>
     Object? dogruCevap = null,
     Object? cozumMetni = freezed,
     Object? resimURL = freezed,
+    Object? aciklama = freezed,
   }) {
     return _then(
       _$QuestionModelImpl(
@@ -162,6 +171,10 @@ class __$$QuestionModelImplCopyWithImpl<$Res>
             ? _value.resimURL
             : resimURL // ignore: cast_nullable_to_non_nullable
                   as String?,
+        aciklama: freezed == aciklama
+            ? _value.aciklama
+            : aciklama // ignore: cast_nullable_to_non_nullable
+                  as String?,
       ),
     );
   }
@@ -176,6 +189,7 @@ class _$QuestionModelImpl implements _QuestionModel {
     required this.dogruCevap,
     this.cozumMetni,
     this.resimURL,
+    this.aciklama,
   }) : _secenekler = secenekler;
 
   factory _$QuestionModelImpl.fromJson(Map<String, dynamic> json) =>
@@ -198,10 +212,12 @@ class _$QuestionModelImpl implements _QuestionModel {
   final String? cozumMetni;
   @override
   final String? resimURL;
+  @override
+  final String? aciklama;
 
   @override
   String toString() {
-    return 'QuestionModel(soruMetni: $soruMetni, secenekler: $secenekler, dogruCevap: $dogruCevap, cozumMetni: $cozumMetni, resimURL: $resimURL)';
+    return 'QuestionModel(soruMetni: $soruMetni, secenekler: $secenekler, dogruCevap: $dogruCevap, cozumMetni: $cozumMetni, resimURL: $resimURL, aciklama: $aciklama)';
   }
 
   @override
@@ -220,7 +236,9 @@ class _$QuestionModelImpl implements _QuestionModel {
             (identical(other.cozumMetni, cozumMetni) ||
                 other.cozumMetni == cozumMetni) &&
             (identical(other.resimURL, resimURL) ||
-                other.resimURL == resimURL));
+                other.resimURL == resimURL) &&
+            (identical(other.aciklama, aciklama) ||
+                other.aciklama == aciklama));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -232,6 +250,7 @@ class _$QuestionModelImpl implements _QuestionModel {
     dogruCevap,
     cozumMetni,
     resimURL,
+    aciklama,
   );
 
   /// Create a copy of QuestionModel
@@ -255,6 +274,7 @@ abstract class _QuestionModel implements QuestionModel {
     required final String dogruCevap,
     final String? cozumMetni,
     final String? resimURL,
+    final String? aciklama,
   }) = _$QuestionModelImpl;
 
   factory _QuestionModel.fromJson(Map<String, dynamic> json) =
@@ -270,6 +290,8 @@ abstract class _QuestionModel implements QuestionModel {
   String? get cozumMetni;
   @override
   String? get resimURL;
+  @override
+  String? get aciklama;
 
   /// Create a copy of QuestionModel
   /// with the given fields replaced by the non-null parameter values.
